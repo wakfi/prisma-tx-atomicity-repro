@@ -1,0 +1,13 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  relationMode = "prisma"
+}
+
+/// Starts empty. A transaction that rolls back must leave it empty; any row is a leaked write.
+model Item {
+  id Int @id
+}

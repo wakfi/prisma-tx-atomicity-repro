@@ -1,0 +1,17 @@
+{
+  "name": "prisma-tx-atomicity-repro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "prisma generate",
+    "repro": "tsx repro.ts",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-mariadb": "7.9.0",
+    "@prisma/client": "7.9.0",
+    "prisma": "7.9.0",
+    "mariadb": "3.4.5",
+    "tsx": "4.20.5"
+  }
+}
