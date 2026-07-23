@@ -1,17 +1,17 @@
-# Prisma `$transaction([...])` is not atomic on timeout
+# Prisma `$transaction` is not atomic on timeout
 
-A batch (array-form) interactive transaction that hits its `timeout` can **partially
-commit**: a statement whose dispatch is delayed past the timeout lands on the connection
-*after* the `ROLLBACK` the timeout triggers, so it autocommits — while an earlier statement
-in the same transaction is correctly rolled back.
+A `$transaction` that hits its `timeout` can **partially commit**: a statement whose dispatch
+is delayed past the timeout lands on the connection *after* the `ROLLBACK` the timeout
+triggers, so it autocommits — while an earlier statement in the same transaction is correctly
+rolled back.
 
-The repro starts with an **empty table** and runs a two-statement transaction that times out
-and reports itself rolled back (`P2028`). An atomic implementation must leave the table empty.
-Instead, one row survives — a leaked write.
+The repro starts with an **empty table** and runs a transaction that times out and reports
+itself rolled back (`P2028`). An atomic implementation must leave the table empty. Instead, one
+row survives — a leaked write.
 
 ## Mechanism
 
-Server-side statement order on a single connection, captured from the MySQL general log:
+Server-side statement order on the transaction's connection, captured from the MySQL general log:
 
 ```
 BEGIN
@@ -20,11 +20,10 @@ ROLLBACK                        -- timeout fires -> row 1 undone
 INSERT INTO Item VALUES (2)     -- dispatched late -> lands after ROLLBACK -> AUTOCOMMITS
 ```
 
-Prisma's interactive-transaction timeout issues `ROLLBACK` on the connection but does **not**
-serialize it against statement dispatch (batch queries run with the transaction manager's lock
-disabled). When the event loop delays the second statement's dispatch past the instant the
-timer fires — which happens naturally under load — `ROLLBACK` wins the race to the wire and the
-late statement executes with no active transaction.
+The transaction timeout issues `ROLLBACK` on the connection but does **not** serialize it
+against statement dispatch. When the event loop delays a statement's dispatch past the instant
+the timer fires — which happens naturally under load — `ROLLBACK` wins the race to the wire and
+the late statement executes with no active transaction.
 
 The `sleep(50)` in `repro.ts` only makes the race **deterministic**. With no injected delay, a
 concurrency harness reproduced the same corruption in ~10–15% of timed-out transactions.
